@@ -8,14 +8,9 @@ Scheme for Max Sequencing Toolkit
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
     
-   step-sequencer-tut-intro
+   tutorials-intro
    step-sequencer-tut-1
+   performance
 
-Indices
-=======
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
