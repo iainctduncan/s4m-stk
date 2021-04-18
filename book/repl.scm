@@ -16,3 +16,11 @@ LEFT OFF: fixing up the v5 and v6 issue
 
 - after that, can make a video!
 
+listen-tick
+
+(modulo 241 120)
+
+(modulo 7 4)
+
+
+LEFT OFF: - need to test midi input on version 8

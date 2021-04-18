@@ -1,11 +1,20 @@
-Tutorial 1 - A Basic Step Sequencer
+Tutorial 1 - Multi-Track Step Sequencer
 ================================================================================
 
 In this first tutorial, we're going to make a one-track sequencer that plays from a
-grid of data at a constant rate.  We'll use ticks as our time base, so that you can 
-change the tempo with the
-Max global transport.  In this version, all functions and definitions will be global. This
-is convenient when prototyping as it makes it easy to redefine them on the fly.
+grid of data at a constant rate. By the end of the tutorial, you'll have the tools
+for building a step-sequencer that you can work with using Scheme code, Max widgets,
+or midi input, with on-screen displays. This tutorial covers enough of each
+of these areas (engine, controller, display) to give you the building blocks
+to make a full featured step sequencer customized to your needs and workflow.
+This is the first publication in the Scheme For Max Sequencer Toolkit, and 
+subsequent releases will include a library of components you can build on to
+make a complete, professional production ready live sequencing environment,
+with performance and accuracy suitable for studio or stage. 
+
+In this first tutorial, all functions and definitions will be global. This
+is convenient when prototyping as it makes it easy to redefine them on the fly -
+you can even send new functions to s4m *while the sequencer is running*!
 In a subsequent tutorial we'll put our code into an object-like function that acts
 as a module and namespace so that we can instantiate more than one at a time.
 
@@ -344,7 +353,13 @@ We'll also add a function to seed our sequencer data with some musical input for
     )))
 
 If you load up the step-seq-1-4.maxpat file, you can now use the **seed** button 
-to run this loop and hear real music! 
+to run this loop and hear real music! Don't forget that if you click the **reset**
+button to reset the interpreter, you will need to reseed the data again, and also
+to reclick scan if you want to be able to send messages from Scheme to GUI elements. 
+In a larger system we would probably make an init function to do this for us.
+
+*Question, should there be one in this??*
+
 
 Step 5 - Loop controls
 ----------------------
@@ -414,12 +429,15 @@ don't pass a playback speed of 0, or we can get a divide-by-zero error, and the 
 ends. We can protect against this with scheme, or in max. In this tutorial, I've
 simply clamped the playback gui element to the range 0.25 to 2.0. In subsequent
 tutorials we'll look at other clocking approaches that remove this fragility so
-that if you create an error situation, you don't stop the sequencer. There are lots 
-of options!
+that if you create an error situation, you don't stop the sequencer. Another option
+is to move the self-scheduling code to the top of run-step so that
+playback will continue if run-step hits an error *after* that call. We won't do 
+that in the tutorial code, as we want to catch errors in testing, but if we were
+going to play this live, we'd likely want to. There are lots of options!
 
 Step 6 - A simple display
 -------------------------
-The final thing we'll do for this sequencer is add a very simple display to demonstrate
+The next thing we'll do for this sequencer is add a very simple display to demonstrate
 how you can build a GUI for whatever you want to see while the sequencer runs. For this
 demo, we'll update an LED object over each step so we visually see what step the sequencer
 is on, and we'll add updating our sliders to show the right value when a parameter is
@@ -467,12 +485,338 @@ may want to pass the GUI update handling to a seperate s4m object in the low pri
 which will be the topic of a subsequent tutorial. At this scale, it's not at all an issue.
 
 
-Timing accuracy, the garbage collector, and Max settings 
----------------------------------------------------------
-.. TODO: move this page
-We now have a complete one-track step sequencer that we can update in real-time from 
-live-code or Max objects! It's time for a look at timing, latency, performance,
-and Max settings. First off, let me say that this has been tested
+Step 7 - MIDI input
+-------------------
+The next step for our sequencer will be to add midi input for saving sequence data.
+As everyone's controllers are different, we'll keep this simple, but it should give you
+enough to go off to make more complex midi input systems easily. This is an area
+where doing it in Scheme really shines.
+
+We'll have our input system do four things: users can select a step and set a duration
+by using a number objects, and enter pitch and velocity by playing midi notes on channel 1. 
+
+We'll start by adding two new variables: **edit-step** and **edit-dur**. These will
+hold the currently selected step and duration. Playing a midi note will write the values
+from the midi note number and velocity, along with the **edit-dur** to the step in **edit-step**.
+This means that in Max nomenclature, the keyboard is *hot* - it triggers the work. 
+
+We'll do this in Max by making two new number boxes, constraining their values reasonably
+in the inspector, and hooking them up to messages boxes using the $ notation to call our 
+Scheme functions for selecting a step and dur, which we'll call **select-step** and **select-dur**. 
+
+.. code:: scm
+
+  ; new var for selected step and current dur
+  (define edit-step 0)
+  (define edit-dur 0)
+
+  ; new edit input functions
+  (define (select-step step)
+    (post "editing step:" step)
+    ; the GUI says 1-16 to match musician nomenaclature
+    ; but the computer representation wants index 0+
+    (set! edit-step (- step 1)))
+
+  (define (select-dur dur)
+    (post "duration selected:" dur)
+    (set! edit-dur dur))
+
+Next we'll add a **midi-note** function. This will get called from Max with a message that we
+want to look like **midi-note {note} {vel} {chan}**. We'll do this by connecting a Max **notein**
+to a  **join**, then to a **prepend midi-note** object, and finally sending to **s4m** inlet 0.
+We can test this with a dummy midi-note function that outputs to the console.
+
+Once that's working, all that's left is to make the midi-note function write to our sequence
+data:
+
+.. code:: scm
+
+  (define (midi-note note-num vel channel)
+    "handle midi-note input for update seq data"
+    ; ignore midi-off messages (vel = 0) or not channel 1
+    (if (and (= 1 channel) (> vel 0))
+      (begin
+        (post "midi-note" note-num vel)
+        (update-step edit-step (list 1 edit-dur note-num vel)))))
+
+And that's all there is to it! We can now edit our sequence in real time from the keyboard,
+and you'll see the velocity sliders updating every time we change a step as well. The same
+pattern can be extended indefinitely for more complex midi input. In a subsequent tutorial
+we'll tackle real time midi input where we can play into the sequence, storing the duration
+we play on the keyboard, but this involves significantly more complex code.
+
+
+Step 8 - Multiple Tracks
+------------------------
+
+We've saved multiple tracks until now as it's a big one and adds quite a bit of code. 
+We have a couple of options : we can make one sequencer that plays multiple tracks, or we can make
+multiple sequencers. In tutorial series 2, we'll look at the second option, which requires
+us to refactor our code so that we don't have all our variables in the global namespace. 
+In this version, we'll put multiple tracks into the same sequencer.
+
+We want to be able to change loop settings separately for each track, so this means:
+
+* One sequencer with one playback speed handles all tracks, so play-speed is global
+* The sequence data gets a third dimension for **track**
+* Track specific settings need to become vectors with one point per track
+* We need to add track selection to all our reading and writing functions.
+* We'll add track mutes to each track.
+* We need to loop through all tracks in **run-step**
+
+To keep this manageable, we will not tackle multi-track display. I leave it as an exercise
+for the reader to decide how you might want to handle that, and advanced options will
+be covered in subsequent toolkit components. So for now, we're just going to delete
+the sliders and leds. We'll work from the top to the bottom of the code, updating things
+to be multiple tracks.
+
+First up, variables. We will add a **num-tracks** var, and we'll change the track
+settings to vectors with **num-tracks** points. We'll put in the new **track-on** vector
+for track muting. Finally, we'll add a new var, **loop-sync**, determining
+when track loops resync, which will be explained later. 
+
+.. code:: scm
+
+  ; globals that can stay the same
+  (define cb-handle #f)
+  (define playing #f)
+  (define ticks-per-step 120)
+  (define play-speed 1)
+  
+  ; add a track selector for editing
+  (define edit-step   0)
+  (define edit-dur    0)
+  (define edit-track  0)
+  
+  ; add num-tracks
+  (define num-tracks 4)
+  (define num-params 4)   
+  (define num-steps 16)   
+  
+  ; these are now vectors, num-tracks in size
+  (define loop-len  (make-vector num-tracks 16))
+  (define loop-top  (make-vector num-tracks 0))
+  ; add track mute, vector of 1 or 0
+  (define track-on  (make-vector num-tracks 1))
+  
+  ; curr-step is not a vector, it's the master step  
+  (define curr-step 0)
+  ; number of steps after which track loops resync
+  (define loop-sync 16)
+  
+  ; seq-data gets a third dimension, which will go first
+  (define seq-data (make-vector (list num-tracks num-steps num-params) 0))
+  ; now to get a vector of param values, we can do
+  ; (seq-data track step)
+  
+Updating midi input is simple, we add a selector for track, and we use this
+as an argument to update-step, which we implement shortly:
+
+.. code:: scm
+
+  ; add a select track edit function
+  (define (select-track track)
+    (post "editing track" track)
+    (set! edit-track (- track 1)))
+  
+  (define (select-step step)
+    (post "editing step" step)
+    (set! edit-step (- step 1)))
+  
+  (define (select-dur dur)
+    (post "duration selected:" dur)
+    (set! edit-dur dur))
+
+  ; add new edit-track var in call to update-step 
+  (define (midi-note note-num vel channel)
+    "handle midi-note input for update seq data"
+    ; ignore midi-off messages (vel = 0) or not channel 1
+    (if (and (= 1 channel) (> vel 0))
+      (begin
+        (post "midi-note" note-num vel)
+        (update-step edit-track edit-step (list 1 edit-dur note-num vel)))))
+
+
+Time for the data editing functions. We'll delete flash-led and the code for calling it
+and for updating the velocity sliders. We need to add track parameters to our three data 
+entry functions. Thanks to the handy syntax of s7's muli-dimensional vectors, this
+is dead easy:
+
+.. code:: scm
+
+  ; adding track variables to these
+  (define (update-step-param track step param value)
+    "update one step and one paramater in the sequence data"
+    (set! (seq-data track step param) value))
+  
+  (define (update-step track step pvals)
+    "update all params for a step from a sequence of pvals"
+    (for-each
+      (lambda (param value)(update-step-param track step param value))
+      ; iterate through a sequence of integers and the pvals in parallel
+      (range 0 (length pvals)) pvals))
+  
+  (define (update-seq track starting-step pvals-list)
+    "write multiple notes into the sequence data starting at starting-step"
+    (for-each
+      (lambda (step pvals) (update-step track step pvals))
+      (range starting-step (+ starting-step (length pvals-list)))
+      pvals-list))  
+
+
+Next we need to decide how we'll handle output. We could do one of two things:
+add a track number to the list we output to Max and deal it there, or give
+s4m an outlet for each track. We'll go with an outlet for each track,
+and we'll add a track argument.
+
+.. code:: scm
+
+  ; add a track argument and map it to outlet
+  (define (play-note track params)
+    ;(post "(play-note)" params)
+    (let ((gate (params 0))
+          ; scale duration according to play-speed
+          (dur  (* (/ 1.0 play-speed) (params 1)))
+          (note (params 2))
+          (vel  (params 3)))
+      ; notes only go out if the gate is on
+      (if gate
+        (out track (list note vel dur)))))
+
+
+So far, this has pretty simple. Now we have the tricky business - **run-step**.
+We need to discuss how track looping is going to work first.
+
+Each of our tracks has their own loop-top and loop-len, requiring us to make some
+decisions about how these free-wheel or sync. In this version we're going
+to use a resyncing strategy that I've personally found is a good balance of enabling
+variety vs the ability to reset to "normal" when you need to. 
+If you want totally freewheeling track loops, it's 
+probably better to use the separate-sequencer-per-track design that will be covered
+in the second tutorial series. 
+
+The concept here is that there is a master loop-length and a master curr-step, 
+stored in our **loop-sync** and **curr-step** vars. In real world use, these
+might be something like 8 or 16 bars of steps. A track loop-lenh *can't be longer
+than this value.* 
+Individual track index points are calculated using modulo arithmetic against this
+master loop. This means that at any time, we can put the loop length for a track
+back to a regular size (say 1, 2, 4, or 8 bars), and the step for that track will
+jump immediately to the (new) right place. If our loop-len is irregular, when it
+gets to the boundary for the loop-sync point, it will jump back to the zero index 
+at that point. 
+
+To illustrate: if **loop-sync** is 8, and **loop-len** for a track is 3, its index points
+for 16 steps are going to go:
+
+**0   1   2   0   1   2   0   1   0   1   2   0   1   2   0   1**
+
+Calculating this is straightforward. Our curr-step counter now counts up to
+loop-sync, making loop-sync act as length for a master loop. And our individual track index
+is the curr-step modulo the loop-sync. This automatically makes every track loop resync
+when the curr-step counter rolls-over to 0. Then we apply the loop-top shift to that
+result.
+
+To make this a bit easier to read, we'll put this logic into a helper function, **get-track-step-data**. 
+In **run-step** we need to loop over each track, and we'll check the track mute there:
+
+.. code:: scm
+
+  ; new run-step helper that works with track loop points 
+  (define (get-track-step-data track master-step)
+    "return a vector of param vals for a given track and master step"
+    ; get the step for this track calculating from track's loop-top and loop-len
+    ; note that master-step already rolls over automatically at loop-sync steps
+    (let* ((t-loop-len (loop-len track))
+           (t-loop-top (loop-top track))
+           (actual-step (+ t-loop-top (modulo master-step t-loop-len))))
+      (seq-data track actual-step)))
+
+  ; update run-step for separate track looping
+  (define (run-step)
+    ;(post "(run-step)")
+    ; for each track, get step data and pass to output function 
+    (for-each 
+      (lambda (track-num) 
+        (let ((step-params (get-track-step-data track-num curr-step)))
+          ; only ouput it track not muted
+          (if (= 1 (track-on track-num))
+            (play-note track-num step-params))))
+      ; what we iterate over
+      (range 0 num-tracks))
+    
+    ; change curr-step to use loop-sync as its roll-over point
+    (set! curr-step (if (< curr-step (- loop-sync 1)) (+ 1 curr-step) 0)) 
+    ; schedule next step, using play-speed multiplier
+    (if playing 
+      (set! cb-handle (delay-t (* (/ 1.0 play-speed) ticks-per-step) run-step)))
+  ); end run-step
+ 
+The one remaining piece for multi-track playback is how we will update the 
+track specific  controls. By virtue of the how the loop calculation works, 
+we can't have track loop lengths be longer than the master loop sync control.
+However, the modulo math means that we don't really need to protect against this, we'll
+just never get there - the step counter will roll over at the loop-sync point.
+For illustration purposes, we'll put some error handling in. 
+
+In the Max patch, we'll add loop controls for 4 tracks, with boxes for
+loop-len and loop-top, and a toggle for track muting.
+ 
+.. code:: scm
+
+  (define (set-loop-len track steps)
+    (post "set-loop-len" track steps)
+    (if (> steps loop-sync) 
+      (post "ERROR: loop length cannot exceed loop-sync, at:" loop-sync)
+      ; else set the value
+      (set! (loop-len track) steps)))
+
+  (define (set-loop-top track steps)
+    (post "set-loop-top" track steps)
+    (set! (loop-top track) steps))
+
+  (define (set-track-on track enabled)
+    (post "set-track-on" track enabled)
+    (set! (track-on track) enabled)) 
+
+In the sample Max patch, there are number boxes for editing, and **loadmess**
+objects to start them off with reasonable values. In a more full featured version,
+we'd want to make an **init** function that sends messages to our GUI objects
+to set them with the correct starting values so that these are always set *from
+the Scheme data*. As the changes in this version are already quite complex, we'll
+look at that approach in a subsequent tutorial when we do saving and loading of data.
+
+
+Wrapping up and next steps
+----------------------------
+Our sequencer is fully functional, but there are a few areas we might want to improve
+and will cover in subsequent tutorials.  All our code is global. This is useful when 
+prototyping, because we can redefine
+any function or variable, even while the sequencer is playing. However, this prevents
+us from making more than one instance of our sequencer. If we want to have multiple
+sequencers, perhaps for exploring poly-rhythmic music, we need a way to contain
+all our code. This will be covered in Tutorial 2.
+
+Some of the other topics for subsequent tutorials include:
+
+* Adding and sequencing Scheme functions for algorithmic and stochastic processes
+* Orchestrating multiple sequencers with a score sequencer
+* Hooking up midi controllers to update our sequence data from hardware
+* Saving and loading sets to disk
+* Building sophisticated displays to see our sequence data on screen
+
+I hope you enjoy building sequencers with the toolkit, and please get in touch
+with feedback, requests, or issues!
+
+
+Appendix: Performance, timing accuracy,  and Max settings 
+-------------------------------------------------------------------
+
+NOTE: I will probably move this page to an appendix, thoughts welcome.
+
+We now have a multi-track step sequencer that we can update in real-time from 
+live-code or Max objects. It's time for a look at timing, latency, performance,
+and Max settings. Fist off, let me say that this has been tested
 exhaustively, and running live sequencers with rock solid timing in Scheme for Max 
 absolutely works. If you want to use the CPU use for it, you can get sample accurate timing. 
 However, there is overhead to running Scheme, so understanding your options
@@ -504,7 +848,7 @@ box with a **gc** message and send this to s4m inlet 0. This ensures the gc is c
 every 100 ms. The interpreter thus runs the gc very frequently, ensuring it doesn't 
 have too much to do on each pass.
 
-The Max **i/o** Vector Size** is the most important setting. In order to get
+The Max **I/O Vector Size** is the most important setting. In order to get
 bang on accuracy, we need this big enough for the GC to finish running. This is
 also the setting that produces the latency of Max to your sound output. A setting
 of 512 translates to about 11ms at 44100 sample rate, while 256 is 5.8ms. This is 
@@ -549,112 +893,3 @@ The best thing to do is to experiment with these settings, recording the output,
 take a look in your audio editor. 
 
 
-Wrapping up and next steps
-----------------------------
-Our sequencer is fully functional, but there are a few areas we might want to improve
-and will cover in subsequent tutorials.  All our code is global. This is useful when 
-prototyping, because we can redefine
-any function or variable, even while the sequencer is playing. However, this prevents
-us from making more than one instance of our sequencer. If we want to have multiple
-sequencers, perhaps for exploring poly-rhythmic music, we need a way to contain
-all our code. This will be covered in Tutorial 2.
-
-Some of the other topics for subsequent tutorials include:
-
-* Making a multi-track version, and integrating with the Max transport controls
-* Adding and sequencing Scheme functions for algorithmic and stochastic processes
-* Orchestrating multiple sequencers with a score sequencer
-* Hooking up midi controllers to update our sequence data from hardware
-* Saving and loading sets to disk
-* Building sophisticated displays to see our sequence data on screen
-
-I hope you enjoy building sequencers with the toolkit, and please get in touch
-with feedback, requests, or issues!
-
-Complete code for step-seq-1
-----------------------------
-For reference, here is the complete code so far.
-
-.. code:: scm
-
-  (post "step-seq-1.scm")
-  
-  ; first tutorial file for our step sequencer
-  
-  ; settings a user might change directly
-  (define ticks-per-step 480)
-  (define num-steps 16)   ; max sequence length
-  (define num-params 4)
-  (define loop-len 4)
-  
-  ; internal state variables that should be accessed through functions only
-  (define seq-data (make-vector (list num-steps num-params) 0))
-  (define curr-step 0)
-  (define playing #f)
-  (define cb-handle #f)
-  
-  ;********************************************************************************
-  ; engine functions
-  (define (play-note params)
-    (post "(play-note)" params)
-    (let ((gate (params 0))
-          (dur  (params 1))
-          (note (params 2))
-          (vel  (params 3)))
-      (if gate
-        ; output in the format expected by Max makenote object
-        (out 0 (list note vel dur)))))
-  
-  (define (run-step)
-    (post "run-step, step:" curr-step)
-    (play-note (seq-data curr-step))
-    ; increment or reset the step counter for the next pass
-    (set! curr-step (if (< curr-step (- loop-len 1)) (+ 1 curr-step) 0)) 
-    ; if the sequencer is on, schedule next step and save handle
-    (if playing
-      (set! cb-handle (delay-t ticks-per-step run-step))))
-  
-  (define (play)
-    (post "(play)")
-    (set! playing #t)
-    (run-step))
-  
-  (define (stop)
-    (post "(stop)")
-    (cancel-delay cb-handle)
-    (set! playing #f)
-    (set! curr-step 0))
-  
-  ;********************************************************************************
-  ; sequence editing functions
-  (define (update-step-param step param value)
-    "update one step and one paramater in the sequence data"
-    (set! (seq-data step param) value))
-  
-  (define (update-step step pvals)
-    "update all params for a step from a sequence of pvals"
-    (for-each
-      (lambda (param value)(update-step-param step param value))
-      ; iterate through a sequence of integers and the pvals in parallel
-      (range 0 (length pvals)) pvals))
-  
-  (define (update-seq starting-step pvals-list)
-    "write multiple notes into the sequence data starting at starting-step"
-    (for-each
-      (lambda (step pvals) (update-step step pvals))
-      (range starting-step (+ starting-step (length pvals-list)))
-      pvals-list))  
-  
-  ;********************************************************************************
-  ; testing functions
-  (define (seed)
-    "seed our sequencer with an arpeggiator"
-    (update-seq 0 (list
-      '(1 440 60 90)
-      '(1 440 64 90)
-      '(1 440 67 90)
-      '(1 440 64 90)
-    ))
-  )
-  
-    

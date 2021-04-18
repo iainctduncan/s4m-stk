@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tutorial 1 - A Basic Step Sequencer &#8212; Scheme for Max Sequencing Toolkit 1.0 documentation</title>
+    <title>Tutorial 1 - Multi-Track Step Sequencer &#8212; Scheme for Max Sequencing Toolkit 1.0 documentation</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -31,19 +31,26 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="tutorial-1-a-basic-step-sequencer">
-<h1>Tutorial 1 - A Basic Step Sequencer<a class="headerlink" href="#tutorial-1-a-basic-step-sequencer" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="tutorial-1-multi-track-step-sequencer">
+<h1>Tutorial 1 - Multi-Track Step Sequencer<a class="headerlink" href="#tutorial-1-multi-track-step-sequencer" title="Permalink to this headline">¶</a></h1>
 <p>In this first tutorial, we’re going to make a one-track sequencer that plays from a
-grid of data at a constant rate.  We’ll use ticks as our time base, so that you can
-change the tempo with the
-Max global transport.  In this version, all functions and definitions will be global. This
-is convenient when prototyping as it makes it easy to redefine them on the fly.
+grid of data at a constant rate. By the end of the tutorial, you’ll have the tools
+for building a step-sequencer that you can work with using Scheme code, Max widgets,
+or midi input, with on-screen displays. This tutorial covers enough of each
+of these areas (engine, controller, display) to give you the building blocks
+to make a full featured step sequencer customized to your needs and workflow.
+This is the first publication in the Scheme For Max Sequencer Toolkit, and
+subsequent releases will include a library of components you can build on to
+make a complete, professional production ready live sequencing environment,
+with performance and accuracy suitable for studio or stage.</p>
+<p>In this first tutorial, all functions and definitions will be global. This
+is convenient when prototyping as it makes it easy to redefine them on the fly -
+you can even send new functions to s4m <em>while the sequencer is running</em>!
 In a subsequent tutorial we’ll put our code into an object-like function that acts
 as a module and namespace so that we can instantiate more than one at a time.</p>
-<div class="section" id="step-1-running-a-step-and-clocking-options">
-<h2>Step 1 - Running a step and clocking options<a class="headerlink" href="#step-1-running-a-step-and-clocking-options" title="Permalink to this headline">¶</a></h2>
-<p>To begin, we’ll get some events sequencing at a steady tempo.
-First we need a function that runs on every step and triggers our
+<div class="section" id="step-1-clocking-options">
+<h2>Step 1 - Clocking options<a class="headerlink" href="#step-1-clocking-options" title="Permalink to this headline">¶</a></h2>
+<p>To begin, we need a function that runs on every step and triggers our
 events. We’ll call this <strong>run-step</strong>.
 We have several options for clocking our sequencer to call run-step.</p>
 <p>The simplest option is to just hook it up to a metronome, or any event triggering
@@ -331,7 +338,11 @@ any of the 4 params to any step.</p>
 </pre></div>
 </div>
 <p>If you load up the step-seq-1-4.maxpat file, you can now use the <strong>seed</strong> button
-to run this loop and hear real music!</p>
+to run this loop and hear real music! Don’t forget that if you click the <strong>reset</strong>
+button to reset the interpreter, you will need to reseed the data again, and also
+to reclick scan if you want to be able to send messages from Scheme to GUI elements.
+In a larger system we would probably make an init function to do this for us.</p>
+<p><em>Question, should there be one in this??</em></p>
 </div>
 <div class="section" id="step-5-loop-controls">
 <h2>Step 5 - Loop controls<a class="headerlink" href="#step-5-loop-controls" title="Permalink to this headline">¶</a></h2>
@@ -396,12 +407,15 @@ don’t pass a playback speed of 0, or we can get a divide-by-zero error, and th
 ends. We can protect against this with scheme, or in max. In this tutorial, I’ve
 simply clamped the playback gui element to the range 0.25 to 2.0. In subsequent
 tutorials we’ll look at other clocking approaches that remove this fragility so
-that if you create an error situation, you don’t stop the sequencer. There are lots
-of options!</p>
+that if you create an error situation, you don’t stop the sequencer. Another option
+is to move the self-scheduling code to the top of run-step so that
+playback will continue if run-step hits an error <em>after</em> that call. We won’t do
+that in the tutorial code, as we want to catch errors in testing, but if we were
+going to play this live, we’d likely want to. There are lots of options!</p>
 </div>
 <div class="section" id="step-6-a-simple-display">
 <h2>Step 6 - A simple display<a class="headerlink" href="#step-6-a-simple-display" title="Permalink to this headline">¶</a></h2>
-<p>The final thing we’ll do for this sequencer is add a very simple display to demonstrate
+<p>The next thing we’ll do for this sequencer is add a very simple display to demonstrate
 how you can build a GUI for whatever you want to see while the sequencer runs. For this
 demo, we’ll update an LED object over each step so we visually see what step the sequencer
 is on, and we’ll add updating our sliders to show the right value when a parameter is
@@ -444,11 +458,299 @@ and put a message on the scheduler for every update. For a very large GUI, you
 may want to pass the GUI update handling to a seperate s4m object in the low priority thread,
 which will be the topic of a subsequent tutorial. At this scale, it’s not at all an issue.</p>
 </div>
-<div class="section" id="timing-accuracy-the-garbage-collector-and-max-settings">
-<h2>Timing accuracy, the garbage collector, and Max settings<a class="headerlink" href="#timing-accuracy-the-garbage-collector-and-max-settings" title="Permalink to this headline">¶</a></h2>
-<p>We now have a complete one-track step sequencer that we can update in real-time from
-live-code or Max objects! It’s time for a look at timing, latency, performance,
-and Max settings. First off, let me say that this has been tested
+<div class="section" id="step-7-midi-input">
+<h2>Step 7 - MIDI input<a class="headerlink" href="#step-7-midi-input" title="Permalink to this headline">¶</a></h2>
+<p>The next step for our sequencer will be to add midi input for saving sequence data.
+As everyone’s controllers are different, we’ll keep this simple, but it should give you
+enough to go off to make more complex midi input systems easily. This is an area
+where doing it in Scheme really shines.</p>
+<p>We’ll have our input system do four things: users can select a step and set a duration
+by using a number objects, and enter pitch and velocity by playing midi notes on channel 1.</p>
+<p>We’ll start by adding two new variables: <strong>edit-step</strong> and <strong>edit-dur</strong>. These will
+hold the currently selected step and duration. Playing a midi note will write the values
+from the midi note number and velocity, along with the <strong>edit-dur</strong> to the step in <strong>edit-step</strong>.
+This means that in Max nomenclature, the keyboard is <em>hot</em> - it triggers the work.</p>
+<p>We’ll do this in Max by making two new number boxes, constraining their values reasonably
+in the inspector, and hooking them up to messages boxes using the $ notation to call our
+Scheme functions for selecting a step and dur, which we’ll call <strong>select-step</strong> and <strong>select-dur</strong>.</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="c1">; new var for selected step and current dur</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">edit-step</span> <span class="mi">0</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">edit-dur</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1">; new edit input functions</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">select-step</span> <span class="nv">step</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;editing step:&quot;</span> <span class="nv">step</span><span class="p">)</span>
+  <span class="c1">; the GUI says 1-16 to match musician nomenaclature</span>
+  <span class="c1">; but the computer representation wants index 0+</span>
+  <span class="p">(</span><span class="k">set! </span><span class="nv">edit-step</span> <span class="p">(</span><span class="nb">- </span><span class="nv">step</span> <span class="mi">1</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">select-dur</span> <span class="nv">dur</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;duration selected:&quot;</span> <span class="nv">dur</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">set! </span><span class="nv">edit-dur</span> <span class="nv">dur</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Next we’ll add a <strong>midi-note</strong> function. This will get called from Max with a message that we
+want to look like <strong>midi-note {note} {vel} {chan}</strong>. We’ll do this by connecting a Max <strong>notein</strong>
+to a  <strong>join</strong>, then to a <strong>prepend midi-note</strong> object, and finally sending to <strong>s4m</strong> inlet 0.
+We can test this with a dummy midi-note function that outputs to the console.</p>
+<p>Once that’s working, all that’s left is to make the midi-note function write to our sequence
+data:</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">midi-note</span> <span class="nv">note-num</span> <span class="nv">vel</span> <span class="nv">channel</span><span class="p">)</span>
+  <span class="s">&quot;handle midi-note input for update seq data&quot;</span>
+  <span class="c1">; ignore midi-off messages (vel = 0) or not channel 1</span>
+  <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="k">and </span><span class="p">(</span><span class="nb">= </span><span class="mi">1</span> <span class="nv">channel</span><span class="p">)</span> <span class="p">(</span><span class="nb">&gt; </span><span class="nv">vel</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="p">(</span><span class="nf">begin</span>
+      <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;midi-note&quot;</span> <span class="nv">note-num</span> <span class="nv">vel</span><span class="p">)</span>
+      <span class="p">(</span><span class="nf">update-step</span> <span class="nv">edit-step</span> <span class="p">(</span><span class="nb">list </span><span class="mi">1</span> <span class="nv">edit-dur</span> <span class="nv">note-num</span> <span class="nv">vel</span><span class="p">)))))</span>
+</pre></div>
+</div>
+<p>And that’s all there is to it! We can now edit our sequence in real time from the keyboard,
+and you’ll see the velocity sliders updating every time we change a step as well. The same
+pattern can be extended indefinitely for more complex midi input. In a subsequent tutorial
+we’ll tackle real time midi input where we can play into the sequence, storing the duration
+we play on the keyboard, but this involves significantly more complex code.</p>
+</div>
+<div class="section" id="step-8-multiple-tracks">
+<h2>Step 8 - Multiple Tracks<a class="headerlink" href="#step-8-multiple-tracks" title="Permalink to this headline">¶</a></h2>
+<p>We’ve saved multiple tracks until now as it’s a big one and adds quite a bit of code.
+We have a couple of options : we can make one sequencer that plays multiple tracks, or we can make
+multiple sequencers. In tutorial series 2, we’ll look at the second option, which requires
+us to refactor our code so that we don’t have all our variables in the global namespace.
+In this version, we’ll put multiple tracks into the same sequencer.</p>
+<p>We want to be able to change loop settings separately for each track, so this means:</p>
+<ul class="simple">
+<li><p>One sequencer with one playback speed handles all tracks, so play-speed is global</p></li>
+<li><p>The sequence data gets a third dimension for <strong>track</strong></p></li>
+<li><p>Track specific settings need to become vectors with one point per track</p></li>
+<li><p>We need to add track selection to all our reading and writing functions.</p></li>
+<li><p>We’ll add track mutes to each track.</p></li>
+<li><p>We need to loop through all tracks in <strong>run-step</strong></p></li>
+</ul>
+<p>To keep this manageable, we will not tackle multi-track display. I leave it as an exercise
+for the reader to decide how you might want to handle that, and advanced options will
+be covered in subsequent toolkit components. So for now, we’re just going to delete
+the sliders and leds. We’ll work from the top to the bottom of the code, updating things
+to be multiple tracks.</p>
+<p>First up, variables. We will add a <strong>num-tracks</strong> var, and we’ll change the track
+settings to vectors with <strong>num-tracks</strong> points. We’ll put in the new <strong>track-on</strong> vector
+for track muting. Finally, we’ll add a new var, <strong>loop-sync</strong>, determining
+when track loops resync, which will be explained later.</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="c1">; globals that can stay the same</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">cb-handle</span> <span class="no">#f</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">playing</span> <span class="no">#f</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">ticks-per-step</span> <span class="mi">120</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">play-speed</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="c1">; add a track selector for editing</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">edit-step</span>   <span class="mi">0</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">edit-dur</span>    <span class="mi">0</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">edit-track</span>  <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1">; add num-tracks</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">num-tracks</span> <span class="mi">4</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">num-params</span> <span class="mi">4</span><span class="p">)</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">num-steps</span> <span class="mi">16</span><span class="p">)</span>
+
+<span class="c1">; these are now vectors, num-tracks in size</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">loop-len</span>  <span class="p">(</span><span class="nb">make-vector </span><span class="nv">num-tracks</span> <span class="mi">16</span><span class="p">))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">loop-top</span>  <span class="p">(</span><span class="nb">make-vector </span><span class="nv">num-tracks</span> <span class="mi">0</span><span class="p">))</span>
+<span class="c1">; add track mute, vector of 1 or 0</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">track-on</span>  <span class="p">(</span><span class="nb">make-vector </span><span class="nv">num-tracks</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="c1">; curr-step is not a vector, it&#39;s the master step</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">curr-step</span> <span class="mi">0</span><span class="p">)</span>
+<span class="c1">; number of steps after which track loops resync</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">loop-sync</span> <span class="mi">16</span><span class="p">)</span>
+
+<span class="c1">; seq-data gets a third dimension, which will go first</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">seq-data</span> <span class="p">(</span><span class="nb">make-vector </span><span class="p">(</span><span class="nb">list </span><span class="nv">num-tracks</span> <span class="nv">num-steps</span> <span class="nv">num-params</span><span class="p">)</span> <span class="mi">0</span><span class="p">))</span>
+<span class="c1">; now to get a vector of param values, we can do</span>
+<span class="c1">; (seq-data track step)</span>
+</pre></div>
+</div>
+<p>Updating midi input is simple, we add a selector for track, and we use this
+as an argument to update-step, which we implement shortly:</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="c1">; add a select track edit function</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">select-track</span> <span class="nv">track</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;editing track&quot;</span> <span class="nv">track</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">set! </span><span class="nv">edit-track</span> <span class="p">(</span><span class="nb">- </span><span class="nv">track</span> <span class="mi">1</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">select-step</span> <span class="nv">step</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;editing step&quot;</span> <span class="nv">step</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">set! </span><span class="nv">edit-step</span> <span class="p">(</span><span class="nb">- </span><span class="nv">step</span> <span class="mi">1</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">select-dur</span> <span class="nv">dur</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;duration selected:&quot;</span> <span class="nv">dur</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">set! </span><span class="nv">edit-dur</span> <span class="nv">dur</span><span class="p">))</span>
+
+<span class="c1">; add new edit-track var in call to update-step</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">midi-note</span> <span class="nv">note-num</span> <span class="nv">vel</span> <span class="nv">channel</span><span class="p">)</span>
+  <span class="s">&quot;handle midi-note input for update seq data&quot;</span>
+  <span class="c1">; ignore midi-off messages (vel = 0) or not channel 1</span>
+  <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="k">and </span><span class="p">(</span><span class="nb">= </span><span class="mi">1</span> <span class="nv">channel</span><span class="p">)</span> <span class="p">(</span><span class="nb">&gt; </span><span class="nv">vel</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="p">(</span><span class="nf">begin</span>
+      <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;midi-note&quot;</span> <span class="nv">note-num</span> <span class="nv">vel</span><span class="p">)</span>
+      <span class="p">(</span><span class="nf">update-step</span> <span class="nv">edit-track</span> <span class="nv">edit-step</span> <span class="p">(</span><span class="nb">list </span><span class="mi">1</span> <span class="nv">edit-dur</span> <span class="nv">note-num</span> <span class="nv">vel</span><span class="p">)))))</span>
+</pre></div>
+</div>
+<p>Time for the data editing functions. We’ll delete flash-led and the code for calling it
+and for updating the velocity sliders. We need to add track parameters to our three data
+entry functions. Thanks to the handy syntax of s7’s muli-dimensional vectors, this
+is dead easy:</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="c1">; adding track variables to these</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">update-step-param</span> <span class="nv">track</span> <span class="nv">step</span> <span class="nv">param</span> <span class="nv">value</span><span class="p">)</span>
+  <span class="s">&quot;update one step and one paramater in the sequence data&quot;</span>
+  <span class="p">(</span><span class="k">set! </span><span class="p">(</span><span class="nf">seq-data</span> <span class="nv">track</span> <span class="nv">step</span> <span class="nv">param</span><span class="p">)</span> <span class="nv">value</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">update-step</span> <span class="nv">track</span> <span class="nv">step</span> <span class="nv">pvals</span><span class="p">)</span>
+  <span class="s">&quot;update all params for a step from a sequence of pvals&quot;</span>
+  <span class="p">(</span><span class="nf">for-each</span>
+    <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">param</span> <span class="nv">value</span><span class="p">)(</span><span class="nf">update-step-param</span> <span class="nv">track</span> <span class="nv">step</span> <span class="nv">param</span> <span class="nv">value</span><span class="p">))</span>
+    <span class="c1">; iterate through a sequence of integers and the pvals in parallel</span>
+    <span class="p">(</span><span class="nf">range</span> <span class="mi">0</span> <span class="p">(</span><span class="nb">length </span><span class="nv">pvals</span><span class="p">))</span> <span class="nv">pvals</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">update-seq</span> <span class="nv">track</span> <span class="nv">starting-step</span> <span class="nv">pvals-list</span><span class="p">)</span>
+  <span class="s">&quot;write multiple notes into the sequence data starting at starting-step&quot;</span>
+  <span class="p">(</span><span class="nf">for-each</span>
+    <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">step</span> <span class="nv">pvals</span><span class="p">)</span> <span class="p">(</span><span class="nf">update-step</span> <span class="nv">track</span> <span class="nv">step</span> <span class="nv">pvals</span><span class="p">))</span>
+    <span class="p">(</span><span class="nf">range</span> <span class="nv">starting-step</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">starting-step</span> <span class="p">(</span><span class="nb">length </span><span class="nv">pvals-list</span><span class="p">)))</span>
+    <span class="nv">pvals-list</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Next we need to decide how we’ll handle output. We could do one of two things:
+add a track number to the list we output to Max and deal it there, or give
+s4m an outlet for each track. We’ll go with an outlet for each track,
+and we’ll add a track argument.</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="c1">; add a track argument and map it to outlet</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">play-note</span> <span class="nv">track</span> <span class="nv">params</span><span class="p">)</span>
+  <span class="c1">;(post &quot;(play-note)&quot; params)</span>
+  <span class="p">(</span><span class="k">let </span><span class="p">((</span><span class="nf">gate</span> <span class="p">(</span><span class="nf">params</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="c1">; scale duration according to play-speed</span>
+        <span class="p">(</span><span class="nf">dur</span>  <span class="p">(</span><span class="nb">* </span><span class="p">(</span><span class="nb">/ </span><span class="mf">1.0</span> <span class="nv">play-speed</span><span class="p">)</span> <span class="p">(</span><span class="nf">params</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="p">(</span><span class="nf">note</span> <span class="p">(</span><span class="nf">params</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="p">(</span><span class="nf">vel</span>  <span class="p">(</span><span class="nf">params</span> <span class="mi">3</span><span class="p">)))</span>
+    <span class="c1">; notes only go out if the gate is on</span>
+    <span class="p">(</span><span class="k">if </span><span class="nv">gate</span>
+      <span class="p">(</span><span class="nf">out</span> <span class="nv">track</span> <span class="p">(</span><span class="nb">list </span><span class="nv">note</span> <span class="nv">vel</span> <span class="nv">dur</span><span class="p">)))))</span>
+</pre></div>
+</div>
+<p>So far, this has pretty simple. Now we have the tricky business - <strong>run-step</strong>.
+We need to discuss how track looping is going to work first.</p>
+<p>Each of our tracks has their own loop-top and loop-len, requiring us to make some
+decisions about how these free-wheel or sync. In this version we’re going
+to use a resyncing strategy that I’ve personally found is a good balance of enabling
+variety vs the ability to reset to “normal” when you need to.
+If you want totally freewheeling track loops, it’s
+probably better to use the separate-sequencer-per-track design that will be covered
+in the second tutorial series.</p>
+<p>The concept here is that there is a master loop-length and a master curr-step,
+stored in our <strong>loop-sync</strong> and <strong>curr-step</strong> vars. In real world use, these
+might be something like 8 or 16 bars of steps. A track loop-lenh <em>can’t be longer
+than this value.</em>
+Individual track index points are calculated using modulo arithmetic against this
+master loop. This means that at any time, we can put the loop length for a track
+back to a regular size (say 1, 2, 4, or 8 bars), and the step for that track will
+jump immediately to the (new) right place. If our loop-len is irregular, when it
+gets to the boundary for the loop-sync point, it will jump back to the zero index
+at that point.</p>
+<p>To illustrate: if <strong>loop-sync</strong> is 8, and <strong>loop-len</strong> for a track is 3, its index points
+for 16 steps are going to go:</p>
+<p><strong>0   1   2   0   1   2   0   1   0   1   2   0   1   2   0   1</strong></p>
+<p>Calculating this is straightforward. Our curr-step counter now counts up to
+loop-sync, making loop-sync act as length for a master loop. And our individual track index
+is the curr-step modulo the loop-sync. This automatically makes every track loop resync
+when the curr-step counter rolls-over to 0. Then we apply the loop-top shift to that
+result.</p>
+<p>To make this a bit easier to read, we’ll put this logic into a helper function, <strong>get-track-step-data</strong>.
+In <strong>run-step</strong> we need to loop over each track, and we’ll check the track mute there:</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="c1">; new run-step helper that works with track loop points</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-track-step-data</span> <span class="nv">track</span> <span class="nv">master-step</span><span class="p">)</span>
+  <span class="s">&quot;return a vector of param vals for a given track and master step&quot;</span>
+  <span class="c1">; get the step for this track calculating from track&#39;s loop-top and loop-len</span>
+  <span class="c1">; note that master-step already rolls over automatically at loop-sync steps</span>
+  <span class="p">(</span><span class="k">let* </span><span class="p">((</span><span class="nf">t-loop-len</span> <span class="p">(</span><span class="nf">loop-len</span> <span class="nv">track</span><span class="p">))</span>
+         <span class="p">(</span><span class="nf">t-loop-top</span> <span class="p">(</span><span class="nf">loop-top</span> <span class="nv">track</span><span class="p">))</span>
+         <span class="p">(</span><span class="nf">actual-step</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">t-loop-top</span> <span class="p">(</span><span class="nb">modulo </span><span class="nv">master-step</span> <span class="nv">t-loop-len</span><span class="p">))))</span>
+    <span class="p">(</span><span class="nf">seq-data</span> <span class="nv">track</span> <span class="nv">actual-step</span><span class="p">)))</span>
+
+<span class="c1">; update run-step for separate track looping</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">run-step</span><span class="p">)</span>
+  <span class="c1">;(post &quot;(run-step)&quot;)</span>
+  <span class="c1">; for each track, get step data and pass to output function</span>
+  <span class="p">(</span><span class="nf">for-each</span>
+    <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">track-num</span><span class="p">)</span>
+      <span class="p">(</span><span class="k">let </span><span class="p">((</span><span class="nf">step-params</span> <span class="p">(</span><span class="nf">get-track-step-data</span> <span class="nv">track-num</span> <span class="nv">curr-step</span><span class="p">)))</span>
+        <span class="c1">; only ouput it track not muted</span>
+        <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="mi">1</span> <span class="p">(</span><span class="nf">track-on</span> <span class="nv">track-num</span><span class="p">))</span>
+          <span class="p">(</span><span class="nf">play-note</span> <span class="nv">track-num</span> <span class="nv">step-params</span><span class="p">))))</span>
+    <span class="c1">; what we iterate over</span>
+    <span class="p">(</span><span class="nf">range</span> <span class="mi">0</span> <span class="nv">num-tracks</span><span class="p">))</span>
+
+  <span class="c1">; change curr-step to use loop-sync as its roll-over point</span>
+  <span class="p">(</span><span class="k">set! </span><span class="nv">curr-step</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&lt; </span><span class="nv">curr-step</span> <span class="p">(</span><span class="nb">- </span><span class="nv">loop-sync</span> <span class="mi">1</span><span class="p">))</span> <span class="p">(</span><span class="nb">+ </span><span class="mi">1</span> <span class="nv">curr-step</span><span class="p">)</span> <span class="mi">0</span><span class="p">))</span>
+  <span class="c1">; schedule next step, using play-speed multiplier</span>
+  <span class="p">(</span><span class="k">if </span><span class="nv">playing</span>
+    <span class="p">(</span><span class="k">set! </span><span class="nv">cb-handle</span> <span class="p">(</span><span class="nf">delay-t</span> <span class="p">(</span><span class="nb">* </span><span class="p">(</span><span class="nb">/ </span><span class="mf">1.0</span> <span class="nv">play-speed</span><span class="p">)</span> <span class="nv">ticks-per-step</span><span class="p">)</span> <span class="nv">run-step</span><span class="p">)))</span>
+<span class="p">)</span><span class="c1">; end run-step</span>
+</pre></div>
+</div>
+<p>The one remaining piece for multi-track playback is how we will update the
+track specific  controls. By virtue of the how the loop calculation works,
+we can’t have track loop lengths be longer than the master loop sync control.
+However, the modulo math means that we don’t really need to protect against this, we’ll
+just never get there - the step counter will roll over at the loop-sync point.
+For illustration purposes, we’ll put some error handling in.</p>
+<p>In the Max patch, we’ll add loop controls for 4 tracks, with boxes for
+loop-len and loop-top, and a toggle for track muting.</p>
+<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">set-loop-len</span> <span class="nv">track</span> <span class="nv">steps</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;set-loop-len&quot;</span> <span class="nv">track</span> <span class="nv">steps</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">steps</span> <span class="nv">loop-sync</span><span class="p">)</span>
+    <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;ERROR: loop length cannot exceed loop-sync, at:&quot;</span> <span class="nv">loop-sync</span><span class="p">)</span>
+    <span class="c1">; else set the value</span>
+    <span class="p">(</span><span class="k">set! </span><span class="p">(</span><span class="nf">loop-len</span> <span class="nv">track</span><span class="p">)</span> <span class="nv">steps</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">set-loop-top</span> <span class="nv">track</span> <span class="nv">steps</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;set-loop-top&quot;</span> <span class="nv">track</span> <span class="nv">steps</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">set! </span><span class="p">(</span><span class="nf">loop-top</span> <span class="nv">track</span><span class="p">)</span> <span class="nv">steps</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">set-track-on</span> <span class="nv">track</span> <span class="nv">enabled</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;set-track-on&quot;</span> <span class="nv">track</span> <span class="nv">enabled</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">set! </span><span class="p">(</span><span class="nf">track-on</span> <span class="nv">track</span><span class="p">)</span> <span class="nv">enabled</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>In the sample Max patch, there are number boxes for editing, and <strong>loadmess</strong>
+objects to start them off with reasonable values. In a more full featured version,
+we’d want to make an <strong>init</strong> function that sends messages to our GUI objects
+to set them with the correct starting values so that these are always set <em>from
+the Scheme data</em>. As the changes in this version are already quite complex, we’ll
+look at that approach in a subsequent tutorial when we do saving and loading of data.</p>
+</div>
+<div class="section" id="wrapping-up-and-next-steps">
+<h2>Wrapping up and next steps<a class="headerlink" href="#wrapping-up-and-next-steps" title="Permalink to this headline">¶</a></h2>
+<p>Our sequencer is fully functional, but there are a few areas we might want to improve
+and will cover in subsequent tutorials.  All our code is global. This is useful when
+prototyping, because we can redefine
+any function or variable, even while the sequencer is playing. However, this prevents
+us from making more than one instance of our sequencer. If we want to have multiple
+sequencers, perhaps for exploring poly-rhythmic music, we need a way to contain
+all our code. This will be covered in Tutorial 2.</p>
+<p>Some of the other topics for subsequent tutorials include:</p>
+<ul class="simple">
+<li><p>Adding and sequencing Scheme functions for algorithmic and stochastic processes</p></li>
+<li><p>Orchestrating multiple sequencers with a score sequencer</p></li>
+<li><p>Hooking up midi controllers to update our sequence data from hardware</p></li>
+<li><p>Saving and loading sets to disk</p></li>
+<li><p>Building sophisticated displays to see our sequence data on screen</p></li>
+</ul>
+<p>I hope you enjoy building sequencers with the toolkit, and please get in touch
+with feedback, requests, or issues!</p>
+</div>
+<div class="section" id="appendix-performance-timing-accuracy-and-max-settings">
+<h2>Appendix: Performance, timing accuracy,  and Max settings<a class="headerlink" href="#appendix-performance-timing-accuracy-and-max-settings" title="Permalink to this headline">¶</a></h2>
+<p>NOTE: I will probably move this page to an appendix, thoughts welcome.</p>
+<p>We now have a multi-track step sequencer that we can update in real-time from
+live-code or Max objects. It’s time for a look at timing, latency, performance,
+and Max settings. Fist off, let me say that this has been tested
 exhaustively, and running live sequencers with rock solid timing in Scheme for Max
 absolutely works. If you want to use the CPU use for it, you can get sample accurate timing.
 However, there is overhead to running Scheme, so understanding your options
@@ -476,7 +778,7 @@ both in Max, and out of Max, and some of your Max settings.</p>
 box with a <strong>gc</strong> message and send this to s4m inlet 0. This ensures the gc is called
 every 100 ms. The interpreter thus runs the gc very frequently, ensuring it doesn’t
 have too much to do on each pass.</p>
-<p>The Max <strong>i/o</strong> Vector Size** is the most important setting. In order to get
+<p>The Max <strong>I/O Vector Size</strong> is the most important setting. In order to get
 bang on accuracy, we need this big enough for the GC to finish running. This is
 also the setting that produces the latency of Max to your sound output. A setting
 of 512 translates to about 11ms at 44100 sample rate, while 256 is 5.8ms. This is
@@ -518,112 +820,6 @@ instances or an intermediate data store such as a buffer to pass data between th
 <p>The best thing to do is to experiment with these settings, recording the output, and
 take a look in your audio editor.</p>
 </div>
-<div class="section" id="wrapping-up-and-next-steps">
-<h2>Wrapping up and next steps<a class="headerlink" href="#wrapping-up-and-next-steps" title="Permalink to this headline">¶</a></h2>
-<p>Our sequencer is fully functional, but there are a few areas we might want to improve
-and will cover in subsequent tutorials.  All our code is global. This is useful when
-prototyping, because we can redefine
-any function or variable, even while the sequencer is playing. However, this prevents
-us from making more than one instance of our sequencer. If we want to have multiple
-sequencers, perhaps for exploring poly-rhythmic music, we need a way to contain
-all our code. This will be covered in Tutorial 2.</p>
-<p>Some of the other topics for subsequent tutorials include:</p>
-<ul class="simple">
-<li><p>Making a multi-track version, and integrating with the Max transport controls</p></li>
-<li><p>Adding and sequencing Scheme functions for algorithmic and stochastic processes</p></li>
-<li><p>Orchestrating multiple sequencers with a score sequencer</p></li>
-<li><p>Hooking up midi controllers to update our sequence data from hardware</p></li>
-<li><p>Saving and loading sets to disk</p></li>
-<li><p>Building sophisticated displays to see our sequence data on screen</p></li>
-</ul>
-<p>I hope you enjoy building sequencers with the toolkit, and please get in touch
-with feedback, requests, or issues!</p>
-</div>
-<div class="section" id="complete-code-for-step-seq-1">
-<h2>Complete code for step-seq-1<a class="headerlink" href="#complete-code-for-step-seq-1" title="Permalink to this headline">¶</a></h2>
-<p>For reference, here is the complete code so far.</p>
-<div class="highlight-scm notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="nf">post</span> <span class="s">&quot;step-seq-1.scm&quot;</span><span class="p">)</span>
-
-<span class="c1">; first tutorial file for our step sequencer</span>
-
-<span class="c1">; settings a user might change directly</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">ticks-per-step</span> <span class="mi">480</span><span class="p">)</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">num-steps</span> <span class="mi">16</span><span class="p">)</span>   <span class="c1">; max sequence length</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">num-params</span> <span class="mi">4</span><span class="p">)</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">loop-len</span> <span class="mi">4</span><span class="p">)</span>
-
-<span class="c1">; internal state variables that should be accessed through functions only</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">seq-data</span> <span class="p">(</span><span class="nb">make-vector </span><span class="p">(</span><span class="nb">list </span><span class="nv">num-steps</span> <span class="nv">num-params</span><span class="p">)</span> <span class="mi">0</span><span class="p">))</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">curr-step</span> <span class="mi">0</span><span class="p">)</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">playing</span> <span class="no">#f</span><span class="p">)</span>
-<span class="p">(</span><span class="k">define </span><span class="nv">cb-handle</span> <span class="no">#f</span><span class="p">)</span>
-
-<span class="c1">;********************************************************************************</span>
-<span class="c1">; engine functions</span>
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">play-note</span> <span class="nv">params</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;(play-note)&quot;</span> <span class="nv">params</span><span class="p">)</span>
-  <span class="p">(</span><span class="k">let </span><span class="p">((</span><span class="nf">gate</span> <span class="p">(</span><span class="nf">params</span> <span class="mi">0</span><span class="p">))</span>
-        <span class="p">(</span><span class="nf">dur</span>  <span class="p">(</span><span class="nf">params</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="p">(</span><span class="nf">note</span> <span class="p">(</span><span class="nf">params</span> <span class="mi">2</span><span class="p">))</span>
-        <span class="p">(</span><span class="nf">vel</span>  <span class="p">(</span><span class="nf">params</span> <span class="mi">3</span><span class="p">)))</span>
-    <span class="p">(</span><span class="k">if </span><span class="nv">gate</span>
-      <span class="c1">; output in the format expected by Max makenote object</span>
-      <span class="p">(</span><span class="nf">out</span> <span class="mi">0</span> <span class="p">(</span><span class="nb">list </span><span class="nv">note</span> <span class="nv">vel</span> <span class="nv">dur</span><span class="p">)))))</span>
-
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">run-step</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;run-step, step:&quot;</span> <span class="nv">curr-step</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">play-note</span> <span class="p">(</span><span class="nf">seq-data</span> <span class="nv">curr-step</span><span class="p">))</span>
-  <span class="c1">; increment or reset the step counter for the next pass</span>
-  <span class="p">(</span><span class="k">set! </span><span class="nv">curr-step</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&lt; </span><span class="nv">curr-step</span> <span class="p">(</span><span class="nb">- </span><span class="nv">loop-len</span> <span class="mi">1</span><span class="p">))</span> <span class="p">(</span><span class="nb">+ </span><span class="mi">1</span> <span class="nv">curr-step</span><span class="p">)</span> <span class="mi">0</span><span class="p">))</span>
-  <span class="c1">; if the sequencer is on, schedule next step and save handle</span>
-  <span class="p">(</span><span class="k">if </span><span class="nv">playing</span>
-    <span class="p">(</span><span class="k">set! </span><span class="nv">cb-handle</span> <span class="p">(</span><span class="nf">delay-t</span> <span class="nv">ticks-per-step</span> <span class="nv">run-step</span><span class="p">))))</span>
-
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">play</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;(play)&quot;</span><span class="p">)</span>
-  <span class="p">(</span><span class="k">set! </span><span class="nv">playing</span> <span class="no">#t</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">run-step</span><span class="p">))</span>
-
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">stop</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">post</span> <span class="s">&quot;(stop)&quot;</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">cancel-delay</span> <span class="nv">cb-handle</span><span class="p">)</span>
-  <span class="p">(</span><span class="k">set! </span><span class="nv">playing</span> <span class="no">#f</span><span class="p">)</span>
-  <span class="p">(</span><span class="k">set! </span><span class="nv">curr-step</span> <span class="mi">0</span><span class="p">))</span>
-
-<span class="c1">;********************************************************************************</span>
-<span class="c1">; sequence editing functions</span>
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">update-step-param</span> <span class="nv">step</span> <span class="nv">param</span> <span class="nv">value</span><span class="p">)</span>
-  <span class="s">&quot;update one step and one paramater in the sequence data&quot;</span>
-  <span class="p">(</span><span class="k">set! </span><span class="p">(</span><span class="nf">seq-data</span> <span class="nv">step</span> <span class="nv">param</span><span class="p">)</span> <span class="nv">value</span><span class="p">))</span>
-
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">update-step</span> <span class="nv">step</span> <span class="nv">pvals</span><span class="p">)</span>
-  <span class="s">&quot;update all params for a step from a sequence of pvals&quot;</span>
-  <span class="p">(</span><span class="nf">for-each</span>
-    <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">param</span> <span class="nv">value</span><span class="p">)(</span><span class="nf">update-step-param</span> <span class="nv">step</span> <span class="nv">param</span> <span class="nv">value</span><span class="p">))</span>
-    <span class="c1">; iterate through a sequence of integers and the pvals in parallel</span>
-    <span class="p">(</span><span class="nf">range</span> <span class="mi">0</span> <span class="p">(</span><span class="nb">length </span><span class="nv">pvals</span><span class="p">))</span> <span class="nv">pvals</span><span class="p">))</span>
-
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">update-seq</span> <span class="nv">starting-step</span> <span class="nv">pvals-list</span><span class="p">)</span>
-  <span class="s">&quot;write multiple notes into the sequence data starting at starting-step&quot;</span>
-  <span class="p">(</span><span class="nf">for-each</span>
-    <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">step</span> <span class="nv">pvals</span><span class="p">)</span> <span class="p">(</span><span class="nf">update-step</span> <span class="nv">step</span> <span class="nv">pvals</span><span class="p">))</span>
-    <span class="p">(</span><span class="nf">range</span> <span class="nv">starting-step</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">starting-step</span> <span class="p">(</span><span class="nb">length </span><span class="nv">pvals-list</span><span class="p">)))</span>
-    <span class="nv">pvals-list</span><span class="p">))</span>
-
-<span class="c1">;********************************************************************************</span>
-<span class="c1">; testing functions</span>
-<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">seed</span><span class="p">)</span>
-  <span class="s">&quot;seed our sequencer with an arpeggiator&quot;</span>
-  <span class="p">(</span><span class="nf">update-seq</span> <span class="mi">0</span> <span class="p">(</span><span class="nf">list</span>
-    <span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">440</span> <span class="mi">60</span> <span class="mi">90</span><span class="p">)</span>
-    <span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">440</span> <span class="mi">64</span> <span class="mi">90</span><span class="p">)</span>
-    <span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">440</span> <span class="mi">67</span> <span class="mi">90</span><span class="p">)</span>
-    <span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">440</span> <span class="mi">64</span> <span class="mi">90</span><span class="p">)</span>
-  <span class="p">))</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-</div>
 </div>
 
 
@@ -646,16 +842,17 @@ with feedback, requests, or issues!</p>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="step-sequencer-tut-intro.html">Tutorial - Building an algorithmic step sequencer with Scheme For Max</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial 1 - A Basic Step Sequencer</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#step-1-running-a-step-and-clocking-options">Step 1 - Running a step and clocking options</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial 1 - Multi-Track Step Sequencer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#step-1-clocking-options">Step 1 - Clocking options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-2-transport-controls">Step 2 - Transport controls</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-3-musical-data-and-output">Step 3 - Musical data and output</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-4-multi-dimensional-data-and-writing-to-data">Step 4 - Multi-dimensional data, and writing to data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-5-loop-controls">Step 5 - Loop controls</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-6-a-simple-display">Step 6 - A simple display</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#timing-accuracy-the-garbage-collector-and-max-settings">Timing accuracy, the garbage collector, and Max settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-7-midi-input">Step 7 - MIDI input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-8-multiple-tracks">Step 8 - Multiple Tracks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#wrapping-up-and-next-steps">Wrapping up and next steps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#complete-code-for-step-seq-1">Complete code for step-seq-1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#appendix-performance-timing-accuracy-and-max-settings">Appendix: Performance, timing accuracy,  and Max settings</a></li>
 </ul>
 </li>
 </ul>

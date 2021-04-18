@@ -40,12 +40,25 @@
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
 				"box" : 				{
+					"fontface" : 0,
+					"fontsize" : 14.0,
+					"id" : "obj-8",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 342.5, 38.0, 178.0, 22.0 ],
+					"text" : "Open the Max console!"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-10",
 					"linecount" : 2,
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 342.5, 61.666666388511658, 150.0, 33.0 ],
+					"patching_rect" : [ 342.5, 79.0, 154.0, 33.0 ],
 					"text" : "3 different clocking options (see tutorial)"
 				}
 
@@ -82,7 +95,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 190.0, 119.0, 55.0, 22.0 ],
-					"presentation_linecount" : 2,
 					"text" : "init-clock"
 				}
 
