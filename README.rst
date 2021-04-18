@@ -10,6 +10,6 @@ series. This includes an e-book(let) tutorial that builds up to a
 live-codable multi-track step sequencer with GUI and midi example controls.
 
 Each step of the tutorial has an accompanying scm and Max file
-in the tutorials-code directory.
+in the tutorial-code directory.
 
 Read the narrative here: https://iainctduncan.github.io/s4m-stk/
