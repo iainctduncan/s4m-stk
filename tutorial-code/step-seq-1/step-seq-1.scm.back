@@ -1,0 +1,85 @@
+(post "step-seq-1.scm")
+
+; first tutorial file for our step sequencer
+
+; settings a user might change directly
+(define ticks-per-step 480)
+(define num-steps 16)   ; max sequence length
+(define num-params 4)
+(define loop-len 4)
+
+; internal state variables that should be accessed through functions only
+(define seq-data (make-vector (list num-steps num-params) 0))
+(define curr-step 0)
+(define playing #f)
+(define cb-handle #f)
+
+;********************************************************************************
+; engine functions
+(define (play-note params)
+  ;(post "(play-note)" params)
+  (let ((gate (params 0))
+        (dur  (params 1))
+        (note (params 2))
+        (vel  (params 3)))
+    (if gate
+      ; output in the format expected by Max makenote object
+      (out 0 (list note vel dur)))))
+
+(define (run-step)
+  ;(post "run-step, step:" curr-step)
+  (play-note (seq-data curr-step))
+  ; increment or reset the step counter for the next pass
+  (set! curr-step (if (< curr-step (- loop-len 1)) (+ 1 curr-step) 0)) 
+  ; if the sequencer is on, schedule next step and save handle
+  (if playing
+    (set! cb-handle (delay-t ticks-per-step run-step))))
+
+(define (play)
+  (post "(play)")
+  (set! playing #t)
+  (run-step))
+
+(define (stop)
+  (post "(stop)")
+  (cancel-delay cb-handle)
+  (set! playing #f)
+  (set! curr-step 0))
+
+;********************************************************************************
+; sequence editing functions
+(define (update-step-param step param value)
+  "update one step and one paramater in the sequence data"
+  (set! (seq-data step param) value))
+
+(define (update-step step pvals)
+  "update all params for a step from a sequence of pvals"
+  (for-each
+    (lambda (param value)(update-step-param step param value))
+    ; iterate through a sequence of integers and the pvals in parallel
+    (range 0 (length pvals)) pvals))
+
+(define (update-seq starting-step pvals-list)
+  "write multiple notes into the sequence data starting at starting-step"
+  (for-each
+    (lambda (step pvals) (update-step step pvals))
+    (range starting-step (+ starting-step (length pvals-list)))
+    pvals-list))  
+
+;********************************************************************************
+; testing functions
+(define (seed)
+  "seed our sequencer with an arpeggiator"
+  (update-seq 0 (list
+    '(1 440 60 90)
+    '(1 440 64 90)
+    '(1 440 67 90)
+    '(1 440 64 90)
+  ))
+)
+
+  
+
+    
+ 
+    
