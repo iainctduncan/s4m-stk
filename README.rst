@@ -1,11 +1,11 @@
-Welcome to the Scheme For Max Sequencing Toolkit!
+Welcome to the Scheme For Max Sequencing Toolkit
 =================================================
 
 The S4M Sequencing Toolkit is intended to be a comprehensive resource
 for building sequencers and related tools for live-coding, live-performance,
 and composition in Scheme For Max.
 
-The first series (and only so far!) is the Step Sequencer Tutorial
+The first series (and only so far...) is the Step Sequencer Tutorial
 series. This includes an e-book(let) tutorial that builds up to a 
 live-codable multi-track step sequencer with GUI and midi example controls.
 
